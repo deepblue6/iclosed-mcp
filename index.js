@@ -141,12 +141,18 @@ function bucketByPeriod(calls, period) {
   return Object.values(buckets).sort((a, b) => b.period.localeCompare(a.period));
 }
 
-// ── MCP server ───────────────────────────────────────────────────────
+// ── MCP server factory (one per request) ─────────────────────────────
 
-const server = new McpServer({
-  name: "iclosed",
-  version: "1.0.0",
-});
+function createMcpServer() {
+  const server = new McpServer({
+    name: "iclosed",
+    version: "1.0.0",
+  });
+  registerTools(server);
+  return server;
+}
+
+function registerTools(server) {
 
 // 1. List all contacts (deduped)
 server.tool(
@@ -417,6 +423,8 @@ server.tool(
   }
 );
 
+} // end registerTools
+
 // ── OAuth 2.1 (minimal, for claude.ai connector compatibility) ───────
 
 const authCodes = new Map();   // code -> { clientId, redirectUri, expiresAt }
@@ -560,11 +568,12 @@ const httpServer = createServer(async (req, res) => {
       return;
     }
 
+    const mcpServer = createMcpServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless
     });
 
-    await server.connect(transport);
+    await mcpServer.connect(transport);
     await transport.handleRequest(req, res);
     return;
   }
