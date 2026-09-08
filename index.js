@@ -5,6 +5,7 @@ import { createServer } from "http";
 
 const ICLOSED_API_KEY = process.env.ICLOSED_API_KEY;
 const ICLOSED_BASE = "https://public.api.iclosed.io/v1";
+const MCP_SECRET = process.env.MCP_SECRET || "";
 
 if (!ICLOSED_API_KEY) {
   console.error("ICLOSED_API_KEY env var required");
@@ -424,6 +425,16 @@ const httpServer = createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
     return;
+  }
+
+  // Auth check for MCP endpoint
+  if (MCP_SECRET && req.url !== "/health") {
+    const auth = req.headers["x-api-key"] || req.headers.authorization?.replace("Bearer ", "");
+    if (auth !== MCP_SECRET) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
   }
 
   // MCP endpoint
